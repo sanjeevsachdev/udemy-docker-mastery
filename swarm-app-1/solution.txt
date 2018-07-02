@@ -1,0 +1,16 @@
+docker network create --driver overlay frontend-network
+docker network create --driver overlay backend-network
+
+# What driver to use so that the volume is accessible from any node on the Swarm?
+# docker volume create --driver "" postgres-data
+
+docker service create --name redis --replicas 1 --network frontend-network redis:3.2
+
+# A volume with driver "local" will be created on the same node where the one service replica is created. 
+docker service create --name db --replicas 1 --mount type=volume,source=postgres-data,target=/var/lib/postgresql/data --network backend-network postgres:9.4
+
+docker service create --name vote --replicas 2 --publish 80:80 --network frontend-network dockersamples/examplevotingapp_vote:before
+
+docker service create --name worker --replicas 1 --network frontend-network --network backend-network dockersamples/examplevotingapp_worker
+
+docker service create --name result --replicas 1 --publish 5001:80 --network backend-network dockersamples/examplevotingapp_result:before
